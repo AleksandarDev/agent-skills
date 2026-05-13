@@ -1,3 +1,16 @@
+---
+name: generate-agents-md
+description: >
+  Create or improve a project-specific AGENTS.md file for software repositories.
+  Use when a user wants durable setup, testing, architecture, safety, and workflow
+  instructions for AI coding agents.
+compatibility: Works with terminal-capable and chat-based coding agents that can read Markdown instructions.
+license: MIT
+metadata:
+  author: Enterwell
+  version: "1.0"
+---
+
 # Skill: Generate a Project-Specific AGENTS.md
 
 ## Purpose
