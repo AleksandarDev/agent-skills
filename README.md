@@ -21,38 +21,12 @@ The frontmatter describes metadata such as the skill name, description, compatib
 
 ## How to use skills
 
-Use the `SKILL.md` file as the source of truth. In tools without native Agent Skills support, paste or attach the relevant `SKILL.md` content and ask the agent to follow it.
+Use tooling with native Agent Skills support when available:
 
-### Codex UI
+- [`vercel-labs/skills`](https://github.com/vercel-labs/skills) (recommended for non-UI workflows).
+- [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (alternative for non-UI workflows).
+- Manual installation: copy the desired skill directory into your skills folder as documented in the [Agent Skills specification](https://agentskills.io/).
+- [Codex skills](https://developers.openai.com/codex/skills).
+- [Claude skills](https://support.claude.com/en/articles/12512180-use-skills-in-claude).
 
-1. Open a new task or chat in Codex.
-2. Attach or paste the relevant `SKILL.md` content.
-3. Ask Codex to use that skill for the task, for example: `Use the Generate AGENTS.md skill to create an AGENTS.md for this repository.`
-
-### VS Code
-
-1. Open the repository in VS Code.
-2. Open the relevant `skills/<skill-name>/SKILL.md` file.
-3. In your AI assistant chat, reference the open file or paste its contents and ask the assistant to follow the skill instructions.
-
-### JetBrains IDEs
-
-1. Open the repository in your JetBrains IDE.
-2. Open the relevant `skills/<skill-name>/SKILL.md` file.
-3. In the IDE AI chat, reference the file or paste its contents and ask the assistant to apply the skill to the current project.
-
-### Claude UI
-
-1. Start a Claude conversation or project chat.
-2. Upload or paste the relevant `SKILL.md` file.
-3. Ask Claude to follow the skill instructions for your task.
-
-### Terminal agents
-
-1. Make this repository, or the selected skill directory, available to the terminal agent.
-2. Point the agent at the skill file or paste it into the prompt.
-3. Example prompt:
-
-```text
-Read skills/generate-agents-md/SKILL.md and follow it to create or improve AGENTS.md for the current repository.
-```
+Use the `SKILL.md` file in each skill directory as the source of truth for what the skill does and how an agent should invoke it.
