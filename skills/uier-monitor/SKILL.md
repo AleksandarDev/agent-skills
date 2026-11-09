@@ -8,7 +8,7 @@ compatibility: Requires uier MCP tools, a terminal, Git, GitHub CLI, and Node.js
 license: MIT
 metadata:
   author: Enterwell
-  version: "1.1.2"
+  version: "1.2.0"
 ---
 
 # uier monitor
@@ -36,6 +36,7 @@ The first argument is the uier project's name or id. Optional words after it:
 | `also=u_…,u_…` | Other uier accounts the person confirmed as theirs |
 | `reviewer=u_…` | Account asked to verify the person's own comments (uier won't let them verify a check their own account requested) |
 | `claude=<instance>`, `openai=<instance>` | T3 provider instances for Claude and OpenAI sessions |
+| `split=off` | Never split a comment into UI and backend parts (see Splitting UI and backend) |
 
 Starting again with the same project resumes from saved state.
 
@@ -116,7 +117,8 @@ Then extract the rules for fix sessions to `ROOT/fix-session.md`:
    If `STATE/state.json` exists, this is a resume: run `M status` and `M take`, then check what was in
    flight. For each session marked running, read its result once (T3 `task_status`, since its
    completion may have reached an earlier session). For each open PR, run `gh pr view`. Pending
-   deploys are rechecked by the watcher. Refresh steps 4–6 if the host, repository, account, token,
+   deploys are rechecked by the watcher. If the state has no `harness.split` (an older monitor),
+   set it as in Harness and models. Refresh steps 4–6 if the host, repository, account, token,
    or user restrictions changed, or workflow detection is more than a day old; otherwise go to step 7.
 4. **Harness.** Detect it and pick models (see Harness and models). Record `harness` in the state.
 5. **Repository.** Read the repository notes if they exist (`docs/uier-monitor.md` or
@@ -219,11 +221,16 @@ both Claude and OpenAI (Codex) providers:
 - Only one provider: use it for everything. Claude only: image generation can't run; do vector (SVG)
   work with Opus at `xhigh`, and for raster images reply that it needs an image-capable agent and
   leave the comment open. OpenAI only: branding runs on `sol` at `xhigh`.
+- Record `harness.split: true` when UI and backend work route to different models (both providers
+  usable), `split=off` wasn't given and the person didn't choose one provider or model for all work.
+  Such a group can then run its backend and UI work as parts, each on its own model (see Splitting
+  UI and backend). Otherwise `false`.
 
 **Models elsewhere.** Claude Code: `Agent` with `subagent_type: "general-purpose"`,
 `isolation: "worktree"`, `model: "opus"` and the effort above (this skill asks for it). Codex: the
 inherited model and effort unless the user explicitly requested different settings. Use isolated
-checkouts through the harness when supported. Agents sharing a checkout must run serially.
+checkouts through the harness when supported. Agents sharing a checkout must run serially. Both
+have one model family, so `harness.split` is `false`.
 
 **Waiting.**
 
@@ -276,7 +283,9 @@ already are). The agent is attached when its session starts.
   screen, a small behavior), M (a rearrangement, a new simple component, a few screens), L (data
   model, API, permissions or security, integrations, many surfaces, an unknown cause).
 - `class`: `ui`, `backend`, `investigation` (the cause must be found first), `image` (raster images
-  to generate) or `brand` (redesign, visual identity, brand guide, tokens, logo).
+  to generate) or `brand` (redesign, visual identity, brand guide, tokens, logo). A comment with real
+  work on both sides is `ui` or `backend` by its larger side, and may split later (see Splitting UI
+  and backend).
 - `areas`: one to three area names from this repository's docs index, package guides, or top-level
   folders. They drive grouping and overlap; do not assume uier's application layout.
 - `verify`: yes when the result is a judgment call (look, layout, wording), the request needed
@@ -289,7 +298,8 @@ already are). The agent is attached when its session starts.
 - XS comments from different areas: one "small fixes" group per class, up to 4, when no running
   session works in those areas.
 - Alone: other M and L comments, brand and image work.
-- A group's size, effort and model follow its largest item; mixed UI and backend goes by the larger part.
+- A group's size, effort and model follow its largest item; mixed UI and backend goes by the larger
+  part, unless the group splits (next section).
 - Hold XS-only groups until 10 minutes pass without a new comment or the group has 4 items, since
   people leave comments in bursts. Set `watch.wakeAt` to release them, counting from `now` in `M take`'s
   output or `date -u +%FT%TZ`. Never guess the time.
@@ -297,6 +307,44 @@ already are). The agent is attached when its session starts.
   own items.
 - Group id: `g` and the lowest comment number (`g61`); a later round adds `-2`. Branch:
   `uier/<numbers>-<slug>` (`uier/61-62-board-polish`), lowercase, at most 50 characters.
+
+## Splitting UI and backend
+
+A group with real backend and UI work can run as parts: sessions that run one after another on the
+group's branch, each on the model its side routes to. It is still one group: one slot, one branch,
+one PR, and its comments close together. The parts never run at once, since the UI builds on the
+backend's contract and uier shows one working agent per comment.
+
+**Split when all of these hold:**
+- `harness.split` is true and `workflow.mode` is `pr`.
+- The group is `ui` or `backend`, M or L, and each side is real work on its own. Backend: an API,
+  data model, server logic, permissions or an integration. UI: a new component, screen, layout or
+  interaction. A side that only adds or shows a field isn't a part; go by the larger side.
+- You can name the contract between the sides in one line: an endpoint, a type or a data shape.
+
+**Shape.** Record `parts` on the group in order, the side that defines the contract first (usually
+backend). Each part has its `class` (which picks its model), its own `size` (which sets its
+effort, as in Harness and models) and `do`: its share of the items, ending with the contract.
+
+**Running.**
+- Start part 1 as in Sessions, with the `Part:` line in its brief. It pushes the branch, opens no
+  PR and writes the handoff file `STATE/briefs/<group>/part-<n>.md`. You pass that path on; you
+  don't read it.
+- When a part that isn't last reports done (no blocked items), start the next part in the same wake
+  and the same slot, ahead of the queue. It is dependent work on the group's branch: set that branch
+  in the task's workspace fields when the harness supports it; otherwise the session checks it out
+  itself (fix-session Parts). In the same patch, set the group's `agentLease` to the new session's
+  agent, model, effort and `sessionId` and keep `state: "working"`: the watcher attaches the new
+  agent in place of the old one. Without a lease, call `set_feedback_agent` with the new details.
+- The last part opens the PR. From there the group goes on like any other (Session results step 3).
+- A part with blocked items stops the group there: handle them as in Session results step 2 and
+  end the lease. When the person answers, queue a follow-up that resumes at that part on the same
+  branch.
+- A review session for a split PR reviews the whole PR on the provider that didn't write the larger
+  part.
+- Follow-ups (failed CI, blocking review, rejected verification) go to the model of the side that
+  has to change; rebases and unclear cases go to the larger part's model. A follow-up is one
+  session; it splits again only when it meets every condition above.
 
 ## Sessions
 
@@ -334,8 +382,13 @@ already are). The agent is attached when its session starts.
    Read: <area notes>
    Overlaps: <groups or PRs touching the same files, or none>
    ```
+
+   A part of a split group adds `Part: <n>/<count> <class> · read <the previous part's handoff, or
+   none> · write <STATE/briefs/<group>/part-<n>.md, or none for the last part>`, its own size and
+   effort, and `do:` lines with only its share and the contract.
 3. Record `taskId`, thread id, provider, model, effort, port, branch and `startedAt`; the group is
-   `building`.
+   `building`. For a part, record them on the part as well and set the group's `note` to
+   `part <n>/<count> <class>`.
 4. Attach the session to its items, so uier shows the agent and, with a lease, a working spinner by
    its avatar. The spinner lasts five minutes unless renewed, and you sleep while sessions build, so
    the watcher renews it:
@@ -359,6 +412,10 @@ its `summary`). It ends with a `RESULT` block (see the fix-session rules).
 1. Record `pr`, `head`, `branch` and each item's `verify` and summary; free the slot. In the same
    patch, end the group's lease: `"agentLease": { "state": "done", "clear": ["<blocked commentId>", …] }`.
    The watcher turns the spinner off and keeps the agent attached until the comment closes.
+   A part of a split group that isn't last and has no blocked items: record its `head`, `handoff`,
+   `verify` and summaries on the part, mark it done and start the next part instead (see Splitting
+   UI and backend). After the last part, an item's summary joins every part's, and `verify` is yes
+   when any part says so.
 2. Blocked items: reply with the session's question or reason, record `asked` or `rejected`, and
    leave them Open. The watcher removes their agent (`clear` above); without a lease, call
    `clear_feedback_agent` yourself.
@@ -455,11 +512,12 @@ comments as `[uier #12](comment link)`, never a bare `#12`.
 1. Reply:
    ``Fixed in [`<sha7>`](<commit url>) ([PR #<n>](<pr url>)), deployed to <site>. <What changed, in
    one or two sentences.>``, then a blank line and ``<Agent> session: `<session id>` (<model>, <effort>)``.
+   A split group lists one such line per part, in order.
    For changes with no deploy step, say "merged" and omit the deployment claim. For unsupported
    deploys or incomplete acceptance, explain the pending check and keep the comment open.
    Pass that session's `agent`, `model` and effort as `reasoning` to `reply_to_feedback` (on every
-   reply about a session's work): the watcher's connection may have attached the agent, so uier
-   can't take them from yours.
+   reply about a session's work; for a split group, the last part's): the watcher's connection may
+   have attached the agent, so uier can't take them from yours.
 2. Then either `set_feedback_status` with `status: "done"`, or, when the item needs verification,
    `request_feedback_verification` with `expectedRevision` from the packet's verification (null when
    there is none), `fixUrl` set to the page link from the packet, a summary under 500 characters, and
@@ -507,7 +565,7 @@ thread with `freshSession: true`) and tell the person this mode costs more token
   "me": { "id": "u_…", "name": "…", "also": [{ "id": "u_…", "name": "…" }], "reviewer": null },
   "scope": "mine",
   "max": 6,
-  "harness": { "kind": "t3", "prWatch": true, "threadId": "…", "routing": { "ui": { "provider": "…", "model": "…" } } },
+  "harness": { "kind": "t3", "prWatch": true, "split": true, "threadId": "…", "routing": { "ui": { "provider": "…", "model": "…" } } },
   "workflow": { "mode": "pr", "base": "main", "method": "squash", "autoMerge": true, "requiredChecks": ["CI OK"],
     "deploy": { "kind": "actions", "workflow": "deploy.yml", "branch": "main", "pathsIgnore": ["*.md"] }, "detectedAt": "…" },
   "watch": { "wakes": 0, "wakeAt": null, "mcpCursor": null, "lease": "available", "maxMinutes": 110, "fallbackMinutes": 15, "reconcileMinutes": 15 },
@@ -515,7 +573,10 @@ thread with `freshSession: true`) and tell the person this mode costs more token
     "size": "S", "class": "ui", "areas": ["board"], "verify": false, "group": "g61", "stage": "in-progress", "round": 1 } },
   "groups": { "g61": { "items": ["<commentId>"], "state": "building", "size": "S", "class": "ui", "areas": ["board"],
     "provider": "…", "model": "…", "effort": "medium", "taskId": "…", "threadId": "…", "branch": "…", "port": 4104, "pr": 456,
-    "agentLease": { "items": ["<commentId>"], "agent": "claude", "model": "<selected model>", "reasoning": "medium", "sessionId": "<thread id>", "state": "working", "clear": [] } } },
+    "agentLease": { "items": ["<commentId>"], "agent": "claude", "model": "<selected model>", "reasoning": "medium", "sessionId": "<thread id>", "state": "working", "clear": [] } },
+    "g70": { "items": ["<commentId>"], "state": "building", "size": "L", "class": "ui", "note": "part 2/2 ui", "part": 1,
+      "parts": [{ "class": "backend", "size": "M", "do": "…", "provider": "…", "model": "<selected backend model>", "effort": "high", "taskId": "…", "threadId": "…", "state": "done", "head": "…", "handoff": "STATE/briefs/g70/part-1.md" },
+        { "class": "ui", "size": "L", "do": "…", "provider": "…", "model": "<selected UI model>", "effort": "xhigh", "taskId": "…", "threadId": "…", "state": "building" }] } },
   "prs": { "456": { "group": "g61", "state": "open", "autoMerge": true } },
   "deploys": { "pending": [{ "pr": 456, "sha": "…", "groups": ["g61"] }] }
 }
@@ -529,6 +590,9 @@ thread with `freshSession: true`) and tell the person this mode costs more token
 - `groups.*.agentLease.state`: `working` while its session runs, then `done`. The watcher keeps its
   progress per comment (attached details, last renewal) in `watch.json`; a lease removed from the
   state counts as done. `clear` lists comments whose agent the watcher removes when it ends.
+- `groups.*.parts`: only for a split group, in run order; `part` is the index of the running part,
+  and each part's `state` is `queued`, `building`, `done` or `blocked`. Keep the group's `class`,
+  `provider`, `model`, `effort`, `taskId` and `threadId` on the running part, so `M status` shows it.
 
 <!-- fix-session:begin -->
 # Fix session rules (uier monitor)
@@ -547,6 +611,7 @@ CI, merging and deploys. You build, test and hand over a branch or PR.
    without a managed checkout, fetch the base and create the requested branch without disturbing
    unrelated changes. Use the runtimes, package manager, and setup commands this repository pins;
    do not assume Node, nvm, pnpm, or Corepack. Export `PORT` only when the brief supplies one.
+   A later part of a split group continues the group's branch instead (see Parts).
 2. **Read** the packet files in your brief (and screenshots when given), then the named area notes.
    Skip guides you don't need.
 3. **Build** each item. With several items, commit each one separately.
@@ -567,12 +632,31 @@ CI, merging and deploys. You build, test and hand over a branch or PR.
 7. **Blocked.** If an item can't be done as asked, or two reasonable readings lead to different
    results, don't guess. Leave it out and report it as blocked with one question for the person.
 
+**Parts.** A `Part:` line in your brief means you build one side of a change: an earlier part laid
+the ground, or a later one continues on your branch.
+- Build only your part's `do:` and keep to its contract. If the contract can't work, report the
+  items blocked rather than reshaping it.
+- A later part continues the group's branch. If the harness prepared it, verify it; otherwise run
+  `git fetch origin <base> <branch>` and `git switch -C <branch> origin/<branch>` in your isolated
+  checkout, the one case where you switch branches yourself. Then read the previous part's handoff
+  before anything else.
+- A part that isn't last: run focused checks for your side and leave the required pre-PR checks to
+  the last part, which covers the whole branch, unless the repository requires them before every
+  push. Push with `git push -u origin <branch>` and open no PR. If your checkout still holds the
+  branch, release it with `git switch --detach` so the next part can check it out. Write the handoff
+  file your brief names, under 40 lines: what you built, the contract (endpoints, types, functions,
+  files), what the next part has to do or watch out for, and how you tested. Report `pr: none`.
+- The last part hands over as in step 6 for every part's work: the PR body lists each item once and
+  says which part made which change. Don't rebase the earlier parts' pushed commits: if `<base>`
+  moved, merge `origin/<base>` into the branch instead, and push without force.
+
 End with this block, then the last line:
 
     RESULT
     branch: <branch>
     pr: <url, or "pushed <sha>", or "none">
     head: <sha>
+    handoff: <the handoff file, for a part that isn't last>
     tests: <what ran and the results>
     items:
     - <number>: done | verify=<yes|no> | <what changed, for the person, at most 280 characters>
