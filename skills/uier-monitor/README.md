@@ -10,6 +10,10 @@ you do not need a checkout of the uier application.
   identify duplicates, or recognize an already delivered fix.
 - Group related small fixes and coordinate isolated fix sessions, up to six at once
   when the coding agent supports them. Agents without isolation work serially.
+- Route UI and backend work to the models that suit them when the host offers both
+  Claude and OpenAI providers (T3 Code). A larger comment with real work on both sides
+  runs as two sessions on one branch, usually backend first, then UI from a short
+  handoff note; they share one session slot, one PR, and one completion reply.
 - Assign feedback to the person running the monitor, attach working agents, and
   keep their working indicators alive while fix sessions run.
 - Open PRs, attach each PR to its uier threads, check reviews and CI, and merge when
@@ -139,6 +143,7 @@ close PRs, or undo auto-merge already enabled. State remains available for resum
 | `also=u_…,u_…` | Other accounts the person has confirmed are theirs |
 | `reviewer=u_…` | Another account to verify fixes to the person's own comments |
 | `claude=<instance>`, `openai=<instance>` | Provider instances for T3 Code sessions |
+| `split=off` | Keep comments with UI and backend work in one session |
 
 Starting or resuming monitoring authorizes assignment to yourself, feedback replies
 and status updates, fix sessions, PRs, merges or auto-merge, and bounded transient
@@ -207,6 +212,8 @@ screenshots, or logs, which can contain private project information.
 Extracted from [signalco-io/uier at `41a5bf6`](https://github.com/signalco-io/uier/tree/41a5bf689e6fba8051e0eb5f6ec96006c17afcc2/.claude/skills/uier-monitor)
 (helper version 1.1.1). The shared version is 1.1.2: it adapts the instructions and
 source paths for installation in other projects; watcher behavior is unchanged.
+Skill version 1.2.0 adds UI and backend parts, ported from the uier repository's
+monitor; it changes only the instructions, so the helper stays at 1.1.2.
 The extracted monitor and companion skill are released under **MIT** with the
 rights holder's authorization, matching the collection; see [LICENSE](LICENSE).
 
