@@ -23,9 +23,22 @@ The frontmatter describes metadata such as the skill name, description, compatib
 
 ## How to use skills
 
-Use tooling with native Agent Skills support when available:
+Install with [Vercel's skills CLI](https://github.com/vercel-labs/skills) (recommended for non-UI workflows). From your project directory, run:
 
-- [`vercel-labs/skills`](https://github.com/vercel-labs/skills) (recommended for non-UI workflows).
+```sh
+npx skills@latest add enterwell/agent-skills
+```
+
+The CLI lets you choose which skills and coding agents to install for, then places the skills in the appropriate directories. By default, skills are installed for the current project; add `-g` to install globally and share them across projects.
+
+For project installations, the CLI creates a `skills-lock.json` file to track installed skills. To update installed skills, run:
+
+```sh
+npx skills@latest update
+```
+
+Other installation options and agent-specific documentation:
+
 - [`gh skill install`](https://cli.github.com/manual/gh_skill_install) (alternative for non-UI workflows).
 - Manual installation: copy the desired skill directory into your skills folder as documented in the [Agent Skills specification](https://agentskills.io/).
 - [Codex skills](https://developers.openai.com/codex/skills).
@@ -38,7 +51,7 @@ Use the `SKILL.md` file in each skill directory as the source of truth for what 
 Run from the GitHub repository that owns the website reviewed with uier:
 
 ```sh
-npx skills add Enterwell/agent-skills --skill uier-monitor
+npx skills@latest add enterwell/agent-skills --skill uier-monitor
 ```
 
 Add `-g` to share the installation across projects. The [uier monitor guide](skills/uier-monitor/README.md)
