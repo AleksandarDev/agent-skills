@@ -61,7 +61,5 @@ Review Markdown, frontmatter, and relative links for all skill changes.
 
 ## License
 
-The collection uses [MIT](LICENSE) unless a skill declares a different license.
-The extracted `uier-monitor` and `uier-monitor-script` directories retain
-**AGPL-3.0-only** from uier, with their own license files and
-[source attribution](skills/uier-monitor/README.md#source-license-and-maintenance).
+The collection and its skills use [MIT](LICENSE). Standalone skill directories may
+include a copy of the license alongside their source attribution.

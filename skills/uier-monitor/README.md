@@ -207,8 +207,8 @@ screenshots, or logs, which can contain private project information.
 Extracted from [signalco-io/uier at `41a5bf6`](https://github.com/signalco-io/uier/tree/41a5bf689e6fba8051e0eb5f6ec96006c17afcc2/.claude/skills/uier-monitor)
 (helper version 1.1.1). The shared version is 1.1.2: it adapts the instructions and
 source paths for installation in other projects; watcher behavior is unchanged.
-These extracted directories retain **AGPL-3.0-only**; see [LICENSE](LICENSE).
-The collection's MIT default does not replace that license.
+The extracted monitor and companion skill are released under **MIT** with the
+rights holder's authorization, matching the collection; see [LICENSE](LICENSE).
 
 Edit `SKILL.md` and `scripts/monitor.mjs` here. When the helper changes, bump its
 `VERSION`, `MONITOR_VERSION` and skill metadata, then regenerate the companion skill.

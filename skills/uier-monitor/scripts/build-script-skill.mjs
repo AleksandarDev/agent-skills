@@ -33,7 +33,7 @@ const skill = `---
 name: uier-monitor-script
 description: Recreate monitor.mjs, the watcher and state helper of the uier-monitor skill, when that skill was installed without its scripts folder or its copy is outdated. Use when the uier-monitor skill asks for it.
 compatibility: Requires a terminal and Node.js 18+. Used with the uier-monitor skill.
-license: AGPL-3.0-only
+license: MIT
 metadata:
   author: Enterwell
   version: "${version}"

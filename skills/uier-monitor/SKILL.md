@@ -5,7 +5,7 @@ description: >
   coordinate fixes, open and merge PRs when authorized, track deployments, and
   report back in uier. Use to start, resume, check, or stop feedback monitoring.
 compatibility: Requires uier MCP tools, a terminal, Git, GitHub CLI, and Node.js 18+. Supports T3 Code, Claude Code, Codex, and serial execution in other terminal agents.
-license: AGPL-3.0-only
+license: MIT
 metadata:
   author: Enterwell
   version: "1.1.2"
